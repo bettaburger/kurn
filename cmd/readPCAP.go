@@ -1,14 +1,13 @@
 package cmd
 
 import (
+	"io"
 	"fmt"
 	"bytes"
-	"io"
 	"os"
 	"encoding/json"
 
 	"github.com/google/gopacket"
-	"github.com/google/gopacket/layers"
 	"github.com/google/gopacket/pcapgo"
 	"github.com/spf13/cobra"
 )
@@ -36,8 +35,16 @@ var readPCAP = &cobra.Command {
 		if err != nil {
 			fmt.Println("file format unsupported", err)
 		}
-			packetSource := gopacket.NewPacketSource(r, layers.LayerTypeEthernet)
-			for packet := range packetSource.Packets() {
+		// decode packet
+			packetSource := gopacket.NewPacketSource(r, r.LinkType())
+			for {
+				packet, err := packetSource.NextPacket() // return next decoded packet from packet source. on error return nil or non nil packet
+				if err == io.EOF {
+					break
+				} else if err != nil {
+					fmt.Println("Error: ", err)
+					continue 
+				}
 				handlePacket(packet) // do something with packet here 
 			}
 			return nil
@@ -57,7 +64,7 @@ func handlePacket(p gopacket.Packet) {
 	Timestamp: p.Metadata().CaptureInfo.Timestamp.String(),
 	Network:   getLayerType(network),
 	Direction: getFlow(network),
-	Handshake: getLayerType(transport),
+	Protocol: getLayerType(transport),
 	Info:      getLayerType(application),
 	}
 	//fmt. Printf("%#v\n", packet)
