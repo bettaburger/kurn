@@ -2,11 +2,14 @@ package cmd
 
 import (
 	"fmt"
+	"bytes"
+	"io"
+	"os"
 	"encoding/json"
 
-
 	"github.com/google/gopacket"
-	"github.com/google/gopacket/pcap"
+	"github.com/google/gopacket/layers"
+	"github.com/google/gopacket/pcapgo"
 	"github.com/spf13/cobra"
 )
 
@@ -18,18 +21,26 @@ var readPCAP = &cobra.Command {
 	Short: "parse pcap file into readable code ",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// simple -r cmd
-		pcapFile := "./test/data/en0-capture2.pcap"
-		//output := exec.Command("tcpdump", "-r", pcapFile)
-		if handle, err := pcap.OpenOffline(pcapFile); err !=nil {
-			fmt.Printf("unable to read file path: ")
-			return err
-		} else {
-			packetSource := gopacket.NewPacketSource(handle, handle.LinkType())
+		file, err := os.Open("./test/data/en0-capture2.pcap")
+		if err != nil {
+			fmt.Println("unable to open file", err)
+		}
+
+		buf, err := io.ReadAll(file)
+		if err != nil {
+			fmt.Println("cannot read file", err)
+		}
+		// convert []byte into a reader to supp all pcap file formats
+		fileReader := bytes.NewReader(buf) 
+		r, err := pcapgo.NewReader(fileReader)
+		if err != nil {
+			fmt.Println("file format unsupported", err)
+		}
+			packetSource := gopacket.NewPacketSource(r, layers.LayerTypeEthernet)
 			for packet := range packetSource.Packets() {
 				handlePacket(packet) // do something with packet here 
 			}
 			return nil
-		}
 	},
 }
 
@@ -49,6 +60,7 @@ func handlePacket(p gopacket.Packet) {
 	Handshake: getLayerType(transport),
 	Info:      getLayerType(application),
 	}
+	//fmt. Printf("%#v\n", packet)
 	PrintJSON(packet)
 }
 
@@ -63,11 +75,14 @@ func getFlow(n gopacket.NetworkLayer) string {
 	if n == nil {
 		return ""
 	}
-	return n.NetworkFlow().String()
+	// -\u003e = ->
+	direction := n.NetworkFlow()
+	source, destination := direction.Endpoints()
+	return "From " + source.String() + " To " + destination.String()
 }
 
-func PrintJSON(obj interface{}) { 
-	bytes, _ := json.MarshalIndent(obj, " ", "  ")
+func PrintJSON(packet interface{}) { 
+	bytes, _ := json.MarshalIndent(packet, " ", "  ")
 		fmt.Println(string(bytes)) 
 }
 
