@@ -9,6 +9,7 @@ import (
 
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/pcapgo"
+	"github.com/google/gopacket/layers"
 	"github.com/spf13/cobra"
 )
 
@@ -35,57 +36,79 @@ var readPCAP = &cobra.Command {
 		if err != nil {
 			fmt.Println("file format unsupported", err)
 		}
-		// decode packet
-			packetSource := gopacket.NewPacketSource(r, r.LinkType())
-			for {
-				packet, err := packetSource.NextPacket() // return next decoded packet from packet source. on error return nil or non nil packet
-				if err == io.EOF {
-					break
-				} else if err != nil {
-					fmt.Println("Error: ", err)
-					continue 
-				}
-				handlePacket(packet) // do something with packet here 
-			}
-			return nil
+
+		var (
+			eth layers.Ethernet
+			ip4 layers.IPv4
+			ip6 layers.IPv6
+			tcp layers.TCP
+			udp layers.UDP
+			payload gopacket.Payload //at transport layer
+		)
+
+		parser := gopacket.NewDecodingLayerParser(layers.LayerTypeEthernet, &eth, &ip4, &ip6, &tcp, &udp, &payload)
+		decodedLayers := make([]gopacket.LayerType, 0, 10)
+
+		for {
+			data, capture, err := r.ReadPacketData()
+			if err == io.EOF {
+				break
+			} else if err != nil {
+      	fmt.Println("Error reading packet data: ", err)
+      continue
+    }
+
+		var (
+			network string
+			src string
+			dst string
+			protocol string
+		) 
+
+		// decoding packet 
+		//decodedLayers = decodedLayers[:0]
+		err = parser.DecodeLayers(data, &decodedLayers) 
+		for _, typ := range decodedLayers {
+			switch typ {
+        case layers.LayerTypeEthernet:
+          fmt.Println("    Eth ", eth.SrcMAC, eth.DstMAC)
+					network = "Eth" 
+        case layers.LayerTypeIPv4:
+          fmt.Println("    IP4 ", ip4.SrcIP, ip4.DstIP)
+					network = "IPv4"
+					src = ip4.SrcIP.String()
+					dst = ip4.DstIP.String()
+        case layers.LayerTypeIPv6:
+          fmt.Println("    IP6 ", ip6.SrcIP, ip6.DstIP)
+					network = "IPv6"
+					src = ip6.SrcIP.String()
+					dst = ip6.DstIP.String()
+        case layers.LayerTypeTCP:
+          protocol = fmt.Sprintf("TCP :%d To :%d ", tcp.SrcPort, tcp.DstPort)
+        case layers.LayerTypeUDP:
+          protocol = fmt.Sprintf("UDP :%d To :%d ", udp.SrcPort, udp.DstPort)
+      }
+		}
+
+		packet := Packet{
+			Timestamp: capture.Timestamp.String(),
+			Network:   network,
+			Direction: fmt.Sprintf("From %s To %s", src, dst),
+			Protocol: protocol,
+			Info:      "",
+		}
+
+		PrintJSON(packet)
+
+		if parser.Truncated {
+      fmt.Println("  Packet has been truncated")
+    }
+    if err != nil {
+      fmt.Println("  Error encountered:", err)
+    	}
+		}
+		return nil
 	},
-}
-
-// function returns each layer 
-func handlePacket(p gopacket.Packet) {
-	network := p.NetworkLayer()
-	transport := p.TransportLayer()
-	application := p.ApplicationLayer()
-	if err := p.ErrorLayer(); err != nil { // packet layer error 
-		fmt.Println("packet layer error, partially decoded or unable to decode: ", err.Error())
-	}
-
-	packet := Packet{
-	Timestamp: p.Metadata().CaptureInfo.Timestamp.String(),
-	Network:   getLayerType(network),
-	Direction: getFlow(network),
-	Protocol: getLayerType(transport),
-	Info:      getLayerType(application),
-	}
-	//fmt. Printf("%#v\n", packet)
-	PrintJSON(packet)
-}
-
-func getLayerType(l gopacket.Layer) string {
-	if l == nil {
-		return ""
-	}
-	return l.LayerType().String()
-}
-
-func getFlow(n gopacket.NetworkLayer) string {
-	if n == nil {
-		return ""
-	}
-	// -\u003e = ->
-	direction := n.NetworkFlow()
-	source, destination := direction.Endpoints()
-	return "From " + source.String() + " To " + destination.String()
 }
 
 func PrintJSON(packet interface{}) { 
