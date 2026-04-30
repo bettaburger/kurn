@@ -8,7 +8,7 @@ type Packet struct {
 	Timestamp  string
 	Network    string 
 	Direction  string 
-	Handshake  string 
+	Protocol  string 
 	Info 			 string
 }
 
