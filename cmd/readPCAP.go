@@ -2,6 +2,8 @@ package cmd
 
 import (
 	"fmt"
+	"encoding/json"
+
 
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/pcap"
@@ -47,7 +49,7 @@ func handlePacket(p gopacket.Packet) {
 	Handshake: getLayerType(transport),
 	Info:      getLayerType(application),
 	}
-	fmt.Printf("%+v\n", packet)
+	PrintJSON(packet)
 }
 
 func getLayerType(l gopacket.Layer) string {
@@ -64,8 +66,13 @@ func getFlow(n gopacket.NetworkLayer) string {
 	return n.NetworkFlow().String()
 }
 
+func PrintJSON(obj interface{}) { 
+	bytes, _ := json.MarshalIndent(obj, " ", "  ")
+		fmt.Println(string(bytes)) 
+}
+
 func init() {
 	rootCmd.AddCommand(readPCAP)
-	readPCAP.Flags().StringVarP(&read, "read", "r", "READ", "parse pcap file")
+	readPCAP.Flags().StringVarP(&read, "read", "r", "READ", "parse pcap file")	// run via ./kurn read
 
 }
