@@ -1,10 +1,9 @@
-package kurn
-
+package main
 
 import (
-	"fmt"
+	"github.com/bettaburger/kurn/cmd"
 )
 
 func main() {
-	fmt.Println("hello kurn!")
+	cmd.Execute()
 }
