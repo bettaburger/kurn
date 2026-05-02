@@ -10,11 +10,31 @@ import (
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/pcapgo"
 	"github.com/google/gopacket/layers"
+	//"github.com/google/gopacket/tcpassembly"
+	//"github.com/google/gopacket/tcpassembly/tcpreader"
+
 	"github.com/spf13/cobra"
 )
 
-//var packetList []Packet
-var read string
+var (
+	read string
+	totalPackets uint32
+	packetNum uint32
+
+	eth layers.Ethernet
+	ip4 layers.IPv4
+	ip6 layers.IPv6
+	tcp layers.TCP
+	udp layers.UDP
+	tls layers.TLS
+	payload gopacket.Payload 
+	
+
+	network string
+	src string
+	dst string
+	protocol string
+) 
 
 var readPCAP = &cobra.Command {
 	Use: "read", 
@@ -25,6 +45,7 @@ var readPCAP = &cobra.Command {
 		if err != nil {
 			fmt.Println("unable to open file", err)
 		}
+		defer file.Close()
 
 		buf, err := io.ReadAll(file)
 		if err != nil {
@@ -37,58 +58,60 @@ var readPCAP = &cobra.Command {
 			fmt.Println("file format unsupported", err)
 		}
 
-		var (
-			eth layers.Ethernet
-			ip4 layers.IPv4
-			ip6 layers.IPv6
-			tcp layers.TCP
-			udp layers.UDP
-			payload gopacket.Payload //at transport layer
-		)
-
-		parser := gopacket.NewDecodingLayerParser(layers.LayerTypeEthernet, &eth, &ip4, &ip6, &tcp, &udp, &payload)
-		decodedLayers := make([]gopacket.LayerType, 0, 10)
-
+		parser := gopacket.NewDecodingLayerParser(layers.LayerTypeEthernet, &eth, &ip4, &ip6, &tcp, &udp, &tls, &payload)
+		//decodedLayers := make([]gopacket.LayerType, 0, 10)
+		decodedLayers := []gopacket.LayerType{}
+		
+		// parse every packet per layer 
 		for {
 			data, capture, err := r.ReadPacketData()
 			if err == io.EOF {
 				break
 			} else if err != nil {
-      	fmt.Println("Error reading packet data: ", err)
+      fmt.Println("Error reading packet data: ", err)
       continue
     }
 
-		var (
-			network string
-			src string
-			dst string
-			protocol string
-		) 
-
 		// decoding packet 
-		//decodedLayers = decodedLayers[:0]
-		err = parser.DecodeLayers(data, &decodedLayers) 
+		err = parser.DecodeLayers(data, &decodedLayers)
+
 		for _, typ := range decodedLayers {
 			switch typ {
         case layers.LayerTypeEthernet:
           fmt.Println("    Eth ", eth.SrcMAC, eth.DstMAC)
+					fmt.Println("Decoded payload:", payload.LayerContents())
+					encodePayload(payload.LayerContents()) 
 					network = "Eth" 
+
         case layers.LayerTypeIPv4:
           fmt.Println("    IP4 ", ip4.SrcIP, ip4.DstIP)
+					fmt.Println("Raw payload:", payload.LayerContents())
+					encodePayload(payload.LayerContents()) 
 					network = "IPv4"
 					src = ip4.SrcIP.String()
 					dst = ip4.DstIP.String()
+
         case layers.LayerTypeIPv6:
           fmt.Println("    IP6 ", ip6.SrcIP, ip6.DstIP)
+					fmt.Println("Raw payload:", payload.LayerContents())
+					encodePayload(payload.LayerContents()) 
 					network = "IPv6"
 					src = ip6.SrcIP.String()
 					dst = ip6.DstIP.String()
+			
         case layers.LayerTypeTCP:
           protocol = fmt.Sprintf("TCP :%d To :%d ", tcp.SrcPort, tcp.DstPort)
+					fmt.Println("Raw payload:", payload.LayerContents())
+					encodePayload(payload.LayerContents()) 
+		
         case layers.LayerTypeUDP:
           protocol = fmt.Sprintf("UDP :%d To :%d ", udp.SrcPort, udp.DstPort)
+					fmt.Println("Raw payload:", payload.LayerContents())
+					encodePayload(payload.LayerContents()) 
       }
 		}
+		// packet 0....packet n
+		fmt.Println("packet #: ",packetNum)
 
 		packet := Packet{
 			Timestamp: capture.Timestamp.String(),
@@ -105,13 +128,18 @@ var readPCAP = &cobra.Command {
     }
     if err != nil {
       fmt.Println("  Error encountered:", err)
-    	}
-		}
+    }
+		
+		packetNum++
+		totalPackets++
+		} // end of parse
+		
+		fmt.Println("total packets sent: ",totalPackets)
 		return nil
 	},
 }
 
-func PrintJSON(packet interface{}) { 
+func PrintJSON(packet any) { 
 	bytes, _ := json.MarshalIndent(packet, " ", "  ")
 		fmt.Println(string(bytes)) 
 }
