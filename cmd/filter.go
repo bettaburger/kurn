@@ -7,16 +7,17 @@ import (
 	//"fmt"
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
+	"github.com/bettaburger/kurn/protocols"
 )
 //https://pkg.go.dev/honnef.co/go/pcap#Bytes
 
 //returns the header for layer types
-func getHeader(l gopacket.Layer) any {
+func getHeader(l gopacket.Layer) protocols.Header {
 	switch layer := l.(type) {
 	case *layers.Ethernet: 
-		h := EthernetHeader {
-			SrcMAC: layer.SrcMAC, 
-			DstMAC: layer.DstMAC,
+		h := protocols.EthernetHeader {
+			Source: protocols.MACAddress(layer.SrcMAC),
+			Destination: protocols.MACAddress(layer.DstMAC),
 		}
 		// ethernet II  and llc header(802.3)
 		if layer.Length > 0 {
@@ -28,7 +29,7 @@ func getHeader(l gopacket.Layer) any {
 		return h
 		
 	case *layers.IPv4:
-		return IPv4Header {
+		return protocols.IPv4Header {
 			Version: layer.Version, 
 			IHL: layer.IHL, 
 			TOS: layer.TOS,
@@ -39,31 +40,31 @@ func getHeader(l gopacket.Layer) any {
 			TTL: layer.TTL, 
 			Protocol: layer.Protocol, 
 			Checksum: layer.Checksum,
-			SrcIP: layer.SrcIP,
-			DstIP: layer.DstIP, 
+			Source: layer.SrcIP,
+			Destination: layer.DstIP, 
 		} 
 
 	case *layers.IPv6:
-		return IPv6Header {
+		return protocols.IPv6Header {
 			Version: layer.Version, 
 			TrafficClass: layer.TrafficClass,
 			FlowLabel: layer.FlowLabel,
 			Length: layer.Length, 
 			NextHeader: layer.NextHeader,
 			HopLimit: layer.HopLimit,
-			SrcIP: layer.SrcIP,
-			DstIP: layer.DstIP,
+			Source: layer.SrcIP,
+			Destination: layer.DstIP,
 			HopByHop: layer.HopByHop,
 		}
 
 	case *layers.TCP:
-		return TCPHeader {
+		return protocols.TCPHeader {
 			SrcPort: layer.SrcPort,
 			DstPort: layer.DstPort,
 		}
 	
 	case *layers.UDP:
-		return UDPHeader {
+		return protocols.UDPHeader {
 			SrcPort: layer.SrcPort,
 			DstPort: layer.DstPort,
 			Length: layer.Length,
@@ -71,14 +72,14 @@ func getHeader(l gopacket.Layer) any {
 		}
 
 	case *layers.TLS: 
-		return TLSHeader {
+		return protocols.TLSHeader {
 			ChangeCipherSpec: []layers.TLSChangeCipherSpecRecord{},
 			Handshake:[]layers.TLSHandshakeRecord{},
 			AppData: []layers.TLSAppDataRecord{},
 			Alert: []layers.TLSAlertRecord{},
 		}
 	}
-	return "no layer"
+	return nil
 }
 
 
