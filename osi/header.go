@@ -1,4 +1,4 @@
-package protocols
+package osi
 
 import (
 	"net"
@@ -18,7 +18,7 @@ func (m MACAddress) MarshalJSON() ([]byte, error) {
 type EthernetHeader struct {
   Source MACAddress `json:"Source"`
   Destination MACAddress `json:"Destination"`
-  Type   layers.EthernetType `json:"Type"`// filter this later 
+  Type   string `json:"Type"`
 	Length uint16 `json:"Length"`
 }
 

@@ -1,4 +1,4 @@
-package cmd 
+package server 
 
 import "encoding/hex"
 import "fmt"

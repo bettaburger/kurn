@@ -2,7 +2,7 @@
 process each packet byte into layers
 eth, ip, tcp, http
 */
-package cmd
+package server
 
 import (
 	"fmt"
@@ -21,7 +21,6 @@ var (
 	totalPackets uint32
 	packetNum uint32 
 	r gopacket.PacketDataSource
-	
 
 	eth layers.Ethernet
 	ip4 layers.IPv4
@@ -32,7 +31,7 @@ var (
 	payload gopacket.Payload 
 )
 
-func process(pf string) { // path to .pcap
+func Process(pf string) { // path to .pcap
 	packetNum = 1
 	file, err := os.Open(pf)
 	if err != nil {
