@@ -19,3 +19,7 @@ tasks:
   kurn:
     cmds:
       - go run ./cmd/kurn/main.go read
+
+  kurn:
+    cmds:
+      - go run ./cmd/kurn/main.go saved

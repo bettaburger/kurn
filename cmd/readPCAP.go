@@ -6,15 +6,17 @@ import (
 
 	"github.com/spf13/cobra"
 	"database/sql"
+	"github.com/bettaburger/kurn/internal/server/lite"
 	"github.com/bettaburger/kurn/internal/server"
 	_ "github.com/mattn/go-sqlite3"
 
 )
 var read string
 
-var readPCAP = &cobra.Command {
+// ReadPCAP describes read command
+var ReadPCAP = &cobra.Command {
 	Use: "read [path to pcap file]", 
-	Short: "parse pcap file into readable code ",
+	Short: "read file packets and parse",
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// run process 
@@ -27,7 +29,7 @@ var readPCAP = &cobra.Command {
 		defer db.Close()
 
 		// create table 
-		_, err = server.CreateTable(db)
+		_, err = lite.CreateTable(db)
 		if err != nil {
 			fmt.Println(err)
 		}
@@ -35,17 +37,17 @@ var readPCAP = &cobra.Command {
 		if err != nil {
 			return err
 		}
-
-		pf := server.PFile{
+		// pcapfile per read
+		pf := lite.PFile{
 			Filename: fileInfo.Name(),
 			Path: pcapFile, 
 			Size: uint64(fileInfo.Size()),
 		}
-		// hash
-		hash := server.CreateSHA256HashFile(pcapFile)
+		// call hash
+		hash := lite.CreateSHA256HashFile(pcapFile)
 		pf.Hash256 = hash
 
-		id, err := server.InsertPFile(db, pf)
+		id, err := lite.InsertPFile(db, pf)
 		if err != nil {
 			return err
 		}
@@ -57,7 +59,7 @@ var readPCAP = &cobra.Command {
 }
 
 func init() {
-	rootCmd.AddCommand(readPCAP)
-	readPCAP.Flags().StringVarP(&read, "read", "r", "READ", "parse the pcap file")	// run via ./kurn read
+	rootCmd.AddCommand(ReadPCAP)
+	ReadPCAP.Flags().StringVarP(&read, "read", "r", "READ", "parse the pcap file")	// run via ./kurn read
 
 }
