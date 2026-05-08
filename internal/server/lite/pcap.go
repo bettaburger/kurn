@@ -10,7 +10,7 @@ import (
 )
 
 type PFile struct {
-	ID int64
+	id int64
 	Filename string
 	Path string
 	Size uint64
@@ -46,15 +46,18 @@ func InsertPFile(db *sql.DB, pf PFile) (int64, error) {
 }
 
 // delete pcap file from pcap.db by ID number 
-func DelPFile(db *sql.DB, pf PFile, id int) (int64, error) {
+func DelPFile(db *sql.DB, id int) (error) {
 	delQ := `DELETE FROM pcapfiles WHERE id = ?`
-	result, err := db.Exec(delQ, id)
+	row, err := db.Exec(delQ, id)
 	if err != nil {
-		return 0, fmt.Errorf("del pcapfile: %v", err)
+		return fmt.Errorf("del pcapfile: %v", err)
 	}
-	// returns number of rows affected by an update, insert or delete
-	return result.RowsAffected()
+	returnRows(row)
+	return nil
 }
+
+// returns number of rows affected by an update, insert or delete
+func returnRows(row sql.Result) (int64, error) { return row.RowsAffected() }
 
 // list current queries in db
 // next -> filter queries via id, pf, path, size or hash
@@ -68,7 +71,7 @@ func ListSavedFiles(db *sql.DB) ([]PFile, error) {
 	var files []PFile
 	for rows.Next() {
 		var pf PFile
-		if err := rows.Scan(&pf.ID, &pf.Filename, &pf.Path, &pf.Size, &pf.Hash256); err != nil {
+		if err := rows.Scan(&pf.id, &pf.Filename, &pf.Path, &pf.Size, &pf.Hash256); err != nil {
 			return files, err
 		}
 		files = append(files, pf)
