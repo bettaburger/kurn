@@ -1,5 +1,5 @@
 /*
-process each packet byte into layers
+reads each packet from file into layers into layers
 eth, ip, tcp, http
 */
 package server
@@ -14,10 +14,10 @@ import (
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/pcapgo"
 	"github.com/google/gopacket/layers"
+	"time"
 )
 
 var (
-	read string
 	totalPackets uint32
 	packetNum uint32 
 	r gopacket.PacketDataSource
@@ -32,6 +32,7 @@ var (
 )
 
 func Process(pf string) { // path to .pcap
+	start := time.Now()
 	packetNum = 1
 	file, err := os.Open(pf)
 	if err != nil {
@@ -85,6 +86,8 @@ func Process(pf string) { // path to .pcap
 						PrintJSON(getHeader(&udp))
 				}
 			}
+			stop := time.Since(start)
+			fmt.Printf("Process took %s\n", stop)
 			// packet 0....packet n
 			fmt.Println("packet #: ",packetNum)
 			if parser.Truncated {

@@ -1,4 +1,4 @@
-package server
+package lite
 
 import (
 	"database/sql"
@@ -10,7 +10,7 @@ import (
 )
 
 type PFile struct {
-	ID int64
+	id int64
 	Filename string
 	Path string
 	Size uint64
@@ -28,17 +28,62 @@ func CreateTable(db *sql.DB) (sql.Result, error) {
 	return db.Exec(query)
 }
 
+// insert pcap file into pcap.db
 func InsertPFile(db *sql.DB, pf PFile) (int64, error) {
 	query := `INSERT INTO pcapfiles(filename, path, size, hash256) 
 	VALUES (?, ?, ?, ?)
 	ON CONFLICT(hash256) DO NOTHING;
 	`
-
 	result, err := db.Exec(query, pf.Filename, pf.Path, pf.Size, pf.Hash256)
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("add pcapfile: %v", err)
 	}
-	return result.LastInsertId()
+	rows, _ := ReturnRows(result) 
+	if rows == 0 {
+		return 0, fmt.Errorf("pcap file already exits")
+	}
+	
+	id, err := result.LastInsertId()
+	if err != nil {
+		return 0, fmt.Errorf("add pcapfile: %v", err)
+	}
+	return id, nil // return new album id
+}
+
+// delete pcap file from pcap.db by ID number 
+func DelPFile(db *sql.DB, id int) (int64, error){
+	delQ := `DELETE FROM pcapfiles WHERE id = ?`
+	row, err := db.Exec(delQ, id)
+	if err != nil {
+		return 0, fmt.Errorf("del pcapfile: %v", err)
+	}
+	return ReturnRows(row)
+}
+
+// returns number of rows affected by an update, insert or delete
+func ReturnRows(row sql.Result) (int64, error) { return row.RowsAffected() }
+
+// list current queries in db
+// next -> filter queries via id, pf, path, size or hash
+func ListSavedFiles(db *sql.DB) ([]PFile, error) {
+	listQ := `SELECT * FROM pcapfiles`
+	rows, err := db.Query(listQ)
+	if err != nil {
+		return nil, err
+	}
+	// hold files
+	var files []PFile
+	for rows.Next() {
+		var pf PFile
+		if err := rows.Scan(&pf.id, &pf.Filename, &pf.Path, &pf.Size, &pf.Hash256); err != nil {
+			return files, err
+		}
+		files = append(files, pf)
+	}
+	if err = rows.Err(); err != nil {
+		return files, err 
+	}
+	return files, nil
 }
 
 // hash packet contents
