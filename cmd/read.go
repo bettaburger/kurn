@@ -11,16 +11,16 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 
 )
-var read string
+var pcapFile string
 
 // ReadPCAP describes read command
 var ReadPCAP = &cobra.Command {
 	Use: "read [path to pcap file]", 
 	Short: "read file packets and parse",
-	Args: cobra.ExactArgs(1),
+	//Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// run process 
-		pcapFile := args[0]
+		
 		fileInfo, err := FileExists(pcapFile)
 		if err != nil {
 			return err
@@ -63,6 +63,6 @@ func FileExists(pcapFile string) (os.FileInfo, error) { return os.Stat(pcapFile)
 
 func init() {
 	rootCmd.AddCommand(ReadPCAP)
-	ReadPCAP.Flags().StringVarP(&read, "read", "r", "READ", "parse the pcap file")	// run via ./kurn read
-
+	ReadPCAP.Flags().StringVarP(&pcapFile, "file", "f", "", "file to be read")	// run via ./kurn read -f <file-text>
+	ReadPCAP.MarkFlagRequired("file")
 }
