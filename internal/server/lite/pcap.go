@@ -38,6 +38,11 @@ func InsertPFile(db *sql.DB, pf PFile) (int64, error) {
 	if err != nil {
 		return 0, fmt.Errorf("add pcapfile: %v", err)
 	}
+	rows, _ := ReturnRows(result) 
+	if rows == 0 {
+		return 0, fmt.Errorf("pcap file already exits")
+	}
+	
 	id, err := result.LastInsertId()
 	if err != nil {
 		return 0, fmt.Errorf("add pcapfile: %v", err)
@@ -46,18 +51,17 @@ func InsertPFile(db *sql.DB, pf PFile) (int64, error) {
 }
 
 // delete pcap file from pcap.db by ID number 
-func DelPFile(db *sql.DB, id int) (error) {
+func DelPFile(db *sql.DB, id int) (int64, error){
 	delQ := `DELETE FROM pcapfiles WHERE id = ?`
 	row, err := db.Exec(delQ, id)
 	if err != nil {
-		return fmt.Errorf("del pcapfile: %v", err)
+		return 0, fmt.Errorf("del pcapfile: %v", err)
 	}
-	returnRows(row)
-	return nil
+	return ReturnRows(row)
 }
 
 // returns number of rows affected by an update, insert or delete
-func returnRows(row sql.Result) (int64, error) { return row.RowsAffected() }
+func ReturnRows(row sql.Result) (int64, error) { return row.RowsAffected() }
 
 // list current queries in db
 // next -> filter queries via id, pf, path, size or hash

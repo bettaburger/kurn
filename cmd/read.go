@@ -21,7 +21,12 @@ var ReadPCAP = &cobra.Command {
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// run process 
 		pcapFile := args[0]
-
+		fileInfo, err := FileExists(pcapFile)
+		if err != nil {
+			return err
+		}
+		
+		server.Process(pcapFile) //pcap.db build 
 		db, err := sql.Open("sqlite3", "pcap.db") 
 		if err != nil {
 			return err
@@ -32,10 +37,6 @@ var ReadPCAP = &cobra.Command {
 		_, err = lite.CreateTable(db)
 		if err != nil {
 			fmt.Println(err)
-		}
-		fileInfo, err := os.Stat(pcapFile)
-		if err != nil {
-			return err
 		}
 		// pcapfile per read
 		pf := lite.PFile{
@@ -53,10 +54,12 @@ var ReadPCAP = &cobra.Command {
 		}
 		fmt.Println("Inserted ID:", id)
 		fmt.Println("Hash:", pf.Hash256)
-		server.Process(pcapFile) //pcap.db build 
 		return nil
 	},
 }
+
+// check file existance 
+func FileExists(pcapFile string) (os.FileInfo, error) { return os.Stat(pcapFile) }
 
 func init() {
 	rootCmd.AddCommand(ReadPCAP)

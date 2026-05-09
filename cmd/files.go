@@ -6,7 +6,6 @@ import (
 	"database/sql"
 	"fmt"
 	"strconv"
-
 )
 
 var saved string
@@ -43,14 +42,21 @@ var DeleteFile = &cobra.Command {
 		// run del function
 		id, err := strconv.Atoi(args[0])
 		if err != nil {
-			fmt.Println("Must be an id number (1...n)")
+			return fmt.Errorf("must be an integer (1...n) %v", err) 
 		}
 		db, err := sql.Open("sqlite3", "pcap.db")
 		if err != nil {
 			return err 
 		}
 		defer db.Close() 
-		lite.DelPFile(db, id)
+		rows, err := lite.DelPFile(db, id)
+		if err != nil {
+			return fmt.Errorf("failed to delete file %d, %v", id, err)
+		}
+		if rows == 0 {
+			fmt.Printf("no row found with id %d\n try ./kurn saved for full list \n", id)
+			return nil
+		}
 		fmt.Printf("deleted %d\n", id)
 		return nil 
 	},
