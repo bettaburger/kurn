@@ -22,10 +22,6 @@ var ReadPCAP = &cobra.Command {
 		// run process 
 		
 		fileInfo, err := FileExists(pcapFile)
-		if err != nil {
-			return err
-		}
-		
 		server.Process(pcapFile) //pcap.db build 
 		db, err := sql.Open("sqlite3", "pcap.db") 
 		if err != nil {
